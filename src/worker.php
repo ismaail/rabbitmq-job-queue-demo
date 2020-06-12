@@ -6,9 +6,12 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+
 $config = require __DIR__ . '/../config/rabbitmq.php';
 
-$connection = new \PhpAmqpLib\Connection\AMQPStreamConnection(
+$connection = new AMQPStreamConnection(
     $config['host'],
     $config['port'],
     $config['username'],
@@ -19,14 +22,14 @@ $channel = $connection->channel();
 
 # Create the queue if it doesn't already exist.
 $channel->queue_declare(
-    $queue = $config['queue_name'],
-    $passive = false,
-    $durable = true,
-    $exclusive = false,
-    $auto_delete = false,
-    $nowait = false,
-    $arguments = null,
-    $ticket = null
+    $config['queue_name'],
+    false, // passive
+    true,  // durable
+    false, // exclusive
+    false, // auto_delete
+    false, // nowait
+    null,  // arguments
+    null   // ticket
 );
 
 echo PHP_EOL, ' [*] Starting Work..', "\n";
@@ -34,10 +37,12 @@ echo PHP_EOL, ' [*] Starting Work..', "\n";
 /**
  * @param \PhpAmqpLib\Message\AMQPMessage $message
  */
-$callback = function ($message) {
+$callback = function (AMQPMessage $message) {
     echo " [x] Received {$message->body}\n";
+
     $job = json_decode($message->body, true);
     sleep($job['sleep_period']);
+
     echo " [x] Done\n";
     $message->delivery_info['channel']->basic_ack($message->delivery_info['delivery_tag']);
 };
@@ -45,12 +50,12 @@ $callback = function ($message) {
 $channel->basic_qos(null, 1, null);
 
 $channel->basic_consume(
-    $queue = $config['queue_name'],
-    $consumer_tag = '',
-    $no_local = false,
-    $no_ack = false,
-    $exclusive = false,
-    $nowait = false,
+    $config['queue_name'],
+    '',    // consumer_tag
+    false, // no_local
+    false, // no_ack
+    false, // exclusive
+    false, // nowait
     $callback
 );
 
