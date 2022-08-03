@@ -1,0 +1,47 @@
+version: "3"
+
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management-alpine
+    ports:
+      - "5671:5671"
+      - "5672:5672"
+      - "8080:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+      - HOSTNAME=rabbitmq
+    volumes:
+      - "rabbitmq_data:/var/lib/rabbitmq"
+
+  fpm:
+    container_name: rabbitmq_fpm
+    image: ismaail/php:8.1-alpine-fpm
+    volumes:
+        - ".:/home/docker:rw"
+    working_dir: "/home/docker"
+    links:
+      - rabbitmq
+
+#  supervisor:
+#    container_name: rabbitmq_supervisor
+#    image: ismaail/supervisor
+#    volumes:
+#      - "./:/home/docker:rw"
+#      - "./.docker/supervisor/conf.d:/etc/supervisor/conf.d"
+#    ports:
+#      - "9001:9001"
+#    links:
+#      - rabbitmq
+#    depends_on:
+#      - rabbitmq
+
+volumes:
+  rabbitmq_data:
+    driver: local
+
+# networks:
+#   default:
+#     external:
+#       name: nginx_reverse_proxy_network
